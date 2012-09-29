@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+#
+# mutt_gmail_search
+#
+# Search gmail contact list and return the results in mutt-readable form
+# Use with mutt's query_command
+#
+# alex@chizang.net
+# 24 September 2007
+
+import os
+import sys
+import libgmail
+
+if __name__ == "__main__":
+    from getpass import getpass
+
+    do_init = 0
+    filename = os.environ.get("HOME") + "/.muttgmailsearchrc"
+
+    try:
+	needle = sys.argv[1]
+    except IndexError:
+	do_init = 1
+
+    if do_init: 
+	name = raw_input("Gmail account name: ")
+	pw = getpass("Password: ")
+	ga = libgmail.GmailAccount(name, pw)
+
+	print "\nTesting..."
+
+	try:
+	    ga.login()
+	except libgmail.GmailLoginFailure:
+	    print "\nLogin failed. Check username/password."
+	    raise SystemExit
+
+	print "Successful. Saving to .muttgmailsearchrc\n"
+	f = open(filename, "w")
+	f.write(name + "\n")
+	f.write(pw + "\n")
+	f.close()
+    else:
+	login = []
+	f = open(filename)
+	for l in f:
+	    login.append(l.rstrip())
+	name = login[0]
+	pw = login[1]
+	ga = libgmail.GmailAccount(name, pw)
+	ga.login()
+	cl = ga.getContacts()
+	contacts = cl.search(needle)
+	contacts.sort()
+
+	i = 0
+	print "Found %d matching entries..." % len(contacts)
+	for c in contacts:
+	    print "%s\t%s" % (c.getEmail(), unicode(c.getName(),"utf-8").encode('latin-1'))
